@@ -8,6 +8,14 @@ Radiance RGBE component are wrote "as-is" as RGBA png data
 
 Build project using cmake.
 
+First install dependencies
+
+```
+$ cd <hdr2png_project>
+$ git submodule init
+$ git submodule update
+```
+
 ### OSX
 
 ```
