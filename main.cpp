@@ -14,16 +14,19 @@ int main(int argc, char* argv[])
 
 	ValueArg<string> a_input("i","input","input hdr file",true,"","string", cmd );
 	ValueArg<string> a_output("o","output","output png file",true,"","string", cmd );
-	
-	SwitchArg a_rebase("r","rebase", "maximize exponent range", true);
+
+	SwitchArg a_rebase("r","rebase", "maximize exponent range", false);
+	SwitchArg a_verbose("v","verbose", "print infos", false);
 	cmd.add( a_rebase );
+	cmd.add( a_verbose );
 
 	cmd.parse( argc, argv );
-	
+
 	const char* input = a_input.getValue().c_str();
 	const char* output = a_output.getValue().c_str();
-	
-	const bool rebase = a_rebase.getValue();
+
+	const bool rebase  = a_rebase.getValue();
+	const bool verbose = a_verbose.getValue();
 
 	//==================================================
 	//								       Load hdr file
@@ -37,20 +40,23 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	printf( "input loaded \n   size : %i*%i \n   range %i>%i \n", hdrData->width, hdrData->height , hdrData->eMin, hdrData->eMax );
-	
+	if( verbose )
+		printf( "input loaded \n   size : %i*%i \n   range %i>%i \n", hdrData->width, hdrData->height , hdrData->eMin, hdrData->eMax );
+
 	double base;
-	if( rebase ) 
+	if( rebase )
 		base = getNewBase(  hdrData->eMin, hdrData->eMax );
 	else
 		base = 2.0f;
 
 
-	
-	printf( "f32toRgbe (base : %f)\n", base );
+
+	if( verbose )
+		printf( "f32toRgbe (base : %f)\n", base );
 	const unsigned char* rgbe = f32toRgbe( hdrData->cols, hdrData->width, hdrData->height, base );
 
-	printf( "encode png \n" );
+	if( verbose )
+		printf( "encode png \n" );
 	/*Encode the image*/
 	unsigned error = lodepng_encode32_file( output, rgbe, hdrData->width, hdrData->height );
 
@@ -70,7 +76,7 @@ int main(int argc, char* argv[])
 double getNewBase( char min, char max ) {
 	double newbaseMax = pow( pow( 2.0, (double)max ), 1.0/128.0 );
 	double newbaseMin = pow( pow( 2.0, (double)min ), -1.0/128.0 );
-    
+
     if( newbaseMax > newbaseMin)
         return newbaseMax;
 	return newbaseMin;
@@ -88,17 +94,17 @@ unsigned char* f32toRgbe( float* pixels, int w, int h, double base ) {
 
 	unsigned char* rgbe = ( unsigned char* ) malloc( resSize*4*sizeof( unsigned char* ) );
 
-	float r, g, b; 
+	float r, g, b;
 	double e, re;
 	int f;
 
-	double logbase = log( base ); 
-	
+	double logbase = log( base );
+
 
 	int c = 0;
 	int fc = 0;
 	for (j = 0; j < resSize; j++) {
-		
+
 		fc = j*3;
 		c = j*4;
 
@@ -114,14 +120,14 @@ unsigned char* f32toRgbe( float* pixels, int w, int h, double base ) {
 		if( f > 127.0f ) f = 127.0f;
 
 		e = pow( base, f );
-		
+
 		r = r*255.0f / e;
 		g = g*255.0f / e;
 		b = b*255.0f / e;
 
 		f += 128.0f;
 
-		
+
 		rgbe[c] = char( r );
 		rgbe[c+1] = char( g );
 		rgbe[c+2] = char( b );
