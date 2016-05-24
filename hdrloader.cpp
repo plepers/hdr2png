@@ -3,7 +3,7 @@
 	Created:	17:9:2002
 	FileName: 	hdrloader.cpp
 	Author:		Igor Kravtchenko
-	
+
 	Info:		Load HDR image and convert to a set of float32 RGB triplet.
 ************************************************************************************/
 
@@ -38,8 +38,13 @@ bool HDRLoader::load(const char *fileName, HDRLoaderResult& res)
 
 	fread(str, 10, 1, file);
 	if (memcmp(str, "#?RADIANCE", 10)) {
-		fclose(file);
-		return false;
+
+		fseek(file, 0, SEEK_SET);
+		fread(str, 6, 1, file);
+		if (memcmp(str, "#?RGBE", 6)) {
+			fclose(file);
+			return false;
+		}
 	}
 
 	fseek(file, 1, SEEK_CUR);
@@ -84,7 +89,7 @@ bool HDRLoader::load(const char *fileName, HDRLoaderResult& res)
 		return false;
 	}
 
-	// convert image 
+	// convert image
 	for (int y = h - 1; y >= 0; y--) {
 		if (decrunch(scanline, w, file) == false)
 			break;
@@ -126,7 +131,7 @@ void workOnRGBE(RGBE *scan, HDRLoaderResult& res, float *cols )
 bool decrunch(RGBE *scanline, int len, FILE *file)
 {
 	int  i, j;
-					
+
 	if (len < MINELEN || len > MAXELEN)
 		return oldDecrunch(scanline, len, file);
 
@@ -170,7 +175,7 @@ bool oldDecrunch(RGBE *scanline, int len, FILE *file)
 {
 	int i;
 	int rshift = 0;
-	
+
 	while (len > 0) {
 		scanline[0][R] = fgetc(file);
 		scanline[0][G] = fgetc(file);

@@ -137,3 +137,5 @@ unsigned char* f32toRgbe( float* pixels, int w, int h, double base ) {
 
 	return rgbe;
 }
+
+
