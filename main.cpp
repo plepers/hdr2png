@@ -6,6 +6,10 @@ using namespace TCLAP;
 using namespace std;
 
 
+inline float toneMap( const Tonemap *tm, float value ){
+    return tm->expo * pow( value, tm->gamma );
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -17,17 +21,29 @@ int main(int argc, char* argv[])
 
 	SwitchArg a_rebase("r","rebase", "maximize exponent range", false);
 	SwitchArg a_verbose("v","verbose", "print infos", false);
-	cmd.add( a_rebase );
-	cmd.add( a_verbose );
+
+    TCLAP::ValueArg<float> a_expo("e","expo","exposure", false, 1.0, "expo");
+    TCLAP::ValueArg<float> a_gamma("g","gamma","gamma", false, 1.0, "gamma");
+
+
+
+    cmd.add( a_rebase );
+    cmd.add( a_verbose );
+    cmd.add( a_expo );
+    cmd.add( a_gamma );
 
 	cmd.parse( argc, argv );
 
 	const char* input = a_input.getValue().c_str();
 	const char* output = a_output.getValue().c_str();
 
-	const bool rebase  = a_rebase.getValue();
-	const bool verbose = a_verbose.getValue();
+    const bool rebase  = a_rebase.getValue();
+    const bool verbose = a_verbose.getValue();
 
+    const Tonemap tm = {
+        a_expo.getValue(),
+        a_gamma.getValue()
+    };
 	//==================================================
 	//								       Load hdr file
 	//==================================================
@@ -43,9 +59,9 @@ int main(int argc, char* argv[])
 	if( verbose )
 		printf( "input loaded \n   size : %i*%i \n   range %i>%i \n", hdrData->width, hdrData->height , hdrData->eMin, hdrData->eMax );
 
-	double base;
+	float base;
 	if( rebase )
-		base = getNewBase(  hdrData->eMin, hdrData->eMax );
+        base = getNewBase( &tm, hdrData );
 	else
 		base = 2.0f;
 
@@ -53,7 +69,7 @@ int main(int argc, char* argv[])
 
 	if( verbose )
 		printf( "f32toRgbe (base : %f)\n", base );
-	const unsigned char* rgbe = f32toRgbe( hdrData->cols, hdrData->width, hdrData->height, base );
+	const unsigned char* rgbe = f32toRgbe( hdrData->cols, hdrData->width, hdrData->height, base, &tm );
 
 	if( verbose )
 		printf( "encode png \n" );
@@ -73,18 +89,22 @@ int main(int argc, char* argv[])
 
 
 
-double getNewBase( char min, char max ) {
-	double newbaseMax = pow( pow( 2.0, (double)max ), 1.0/128.0 );
-	double newbaseMin = pow( pow( 2.0, (double)min ), -1.0/128.0 );
+float getNewBase( const Tonemap *tm, HDRLoaderResult* hdrData ) {
+    float fmin = pow( 2.0, (float)hdrData->eMin );
+    float fmax = pow( 2.0, (float)hdrData->eMax );
 
-    if( newbaseMax > newbaseMin)
-        return newbaseMax;
-	return newbaseMin;
+    fmin = toneMap( tm, fmin );
+    fmax = toneMap( tm, fmax );
+
+	float newbaseMax = pow( fmin, 1.0/128.0 );
+	float newbaseMin = pow( fmax, -1.0/128.0 );
+
+	return max( newbaseMin, newbaseMax );
 }
 
 
 
-unsigned char* f32toRgbe( float* pixels, int w, int h, double base ) {
+unsigned char* f32toRgbe( float* pixels, int w, int h, float base, const Tonemap *tm ) {
 
 	//base = 2.0;
 
@@ -95,10 +115,10 @@ unsigned char* f32toRgbe( float* pixels, int w, int h, double base ) {
 	unsigned char* rgbe = ( unsigned char* ) malloc( resSize*4*sizeof( unsigned char* ) );
 
 	float r, g, b;
-	double e, re;
+	float e, re;
 	int f;
 
-	double logbase = log( base );
+	float logbase = log( base );
 
 
 	int c = 0;
@@ -108,9 +128,9 @@ unsigned char* f32toRgbe( float* pixels, int w, int h, double base ) {
 		fc = j*3;
 		c = j*4;
 
-		r = pixels[fc];
-		g = pixels[fc+1];
-		b = pixels[fc+2];
+		r = toneMap( tm, pixels[fc]    );
+		g = toneMap( tm, pixels[fc+1]  );
+		b = toneMap( tm, pixels[fc+2]  );
 
 		re = max( r, max( g, b ) );
 

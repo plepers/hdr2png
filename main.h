@@ -19,9 +19,14 @@
 #include <assert.h>
 #endif
 
-double getNewBase( char min, char max );
+typedef struct _Tonemap{
+    float expo;
+    float gamma;
+} Tonemap;
 
-unsigned char* f32toRgbe( float* faces, int w, int h, double base );
+float getNewBase( const Tonemap*, HDRLoaderResult* );
+
+unsigned char* f32toRgbe( float* faces, int w, int h, float base, const Tonemap* );
 
 #endif
 
