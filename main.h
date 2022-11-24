@@ -27,6 +27,7 @@ typedef struct _Tonemap{
 float getNewBase( const Tonemap*, HDRLoaderResult* );
 
 unsigned char* f32toRgbe( float* faces, int w, int h, float base, const Tonemap* );
+unsigned char* f32toRgbm( float* faces, int w, int h );
 
 #endif
 
